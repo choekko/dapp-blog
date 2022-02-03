@@ -39,13 +39,20 @@ contract Blog {
   }
 
   //게시글 읽기 함수
-  function getPost (uint _postId) public view returns(Post memory){
+  function getPost (uint _postId) public view returns(
+      uint id,
+      address owner,
+      string memory title,
+      string memory description,
+      uint tipAmount
+    ){
     require(
       _postId > 0 && 
       _postId <= totalPostCount &&
       postList[_postId].owner != address(0x0)
     );
-    return postList[_postId];
+    Post memory post = postList[_postId];
+    return (post.id, post.owner, post.title, post.description, post.tipAmount);
   }
   //게시글 쓰기 함수
   function writePost (string memory _title, string memory _description) public {
