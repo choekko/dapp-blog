@@ -19,11 +19,12 @@ contract TipManager is Blog {
         Post storage post = postList[_postId];
         post.tipAmount = post.tipAmount + msg.value;
 
-        Author storage author = authorList[post.owner];
-        address payable receiver = payable(author.id);
+        address payable receiver = post.owner;
 
+//돈이 이상한데로 전송된다...
         receiver.transfer(msg.value);
 
+        Author storage author = authorList[post.owner];
         author.totalTip = author.totalTip + msg.value;
         
         emit TipGranted(msg.value, post.title, post.owner, receiver, msg.sender, post.tipAmount, address(this));

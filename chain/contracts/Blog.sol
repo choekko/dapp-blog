@@ -6,7 +6,7 @@ contract Blog {
 
   struct Post {
     uint id;
-    address owner;
+    address payable owner;
     string title;
     string description;
     uint tipAmount;
@@ -41,7 +41,7 @@ contract Blog {
   //게시글 읽기 함수
   function getPost (uint _postId) public view returns(
       uint id,
-      address owner,
+      address payable owner,
       string memory title,
       string memory description,
       uint tipAmount

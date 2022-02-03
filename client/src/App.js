@@ -1,11 +1,23 @@
 import React, { Component } from "react";
-import SimpleStorageContract from "./contracts/SimpleStorage.json";
+import TipManagerInstance from "./contracts/TipManager.json";
 import getWeb3 from "./getWeb3";
 
 import "./App.css";
 
 class App extends Component {
-  state = { storageValue: 0, web3: null, accounts: null, contract: null };
+
+  constructor(props) {
+    super(props);
+
+    this.state = {
+      web3:null, 
+      accounts: null, 
+      contract: null, 
+      totalPostCount:0, 
+      posts:[],
+      loading: false,
+    }
+  }
 
   componentDidMount = async () => {
     try {
@@ -17,15 +29,15 @@ class App extends Component {
 
       // Get the contract instance.
       const networkId = await web3.eth.net.getId();
-      const deployedNetwork = SimpleStorageContract.networks[networkId];
+      const deployedNetwork = TipManagerInstance.networks[networkId];
       const instance = new web3.eth.Contract(
-        SimpleStorageContract.abi,
+        TipManagerInstance.abi,
         deployedNetwork && deployedNetwork.address,
       );
 
       // Set web3, accounts, and contract to the state, and then proceed with an
       // example of interacting with the contract's methods.
-      this.setState({ web3, accounts, contract: instance }, this.runExample);
+      this.setState({ web3, accounts, contract: instance }, this.getPost);
     } catch (error) {
       // Catch any errors for any of the above operations.
       alert(
@@ -35,36 +47,112 @@ class App extends Component {
     }
   };
 
-  runExample = async () => {
-    const { accounts, contract } = this.state;
+  getPost = async() => {
+    const { contract } = this.state;
+    const totalPostCount = await contract.methods.totalPostCount().call();
 
-    // Stores a given value, 5 by default.
-    await contract.methods.set(5).send({ from: accounts[0] });
+    const posts = [];
 
-    // Get the value from the contract to prove it worked.
-    const response = await contract.methods.get().call();
+    for (let i = 1; i<=totalPostCount;i++){
+      const post = await contract.methods.postList(i).call();
+      posts.push(post);
+    }
 
-    // Update state with the result.
-    this.setState({ storageValue: response });
-  };
+    this.setState({totalPostCount, posts});
+  }
+
+  writePost = async (title,description) => {
+    const { accounts, contract,posts } = this.state;
+    this.setState({loading:true})
+    const result = await contract.methods.writePost(
+      title,
+      description
+    ).send({from:accounts[0]});
+
+    const postCreated = result.events.PostCreated.returnValues;
+    console.log(postCreated);
+
+    this.setState({loading:false, posts:[postCreated,...posts]});
+  }
+
+  onSubmitPost = async (e) => {
+    e.preventDefault();
+    const {title, description} = e.target;
+    this.writePost(title.value,description.value);
+  }
+
+  onClickGiveTip = async(e) => {
+    const { accounts, contract,posts } = this.state;
+    e.preventDefault();
+    const postId = e.target.dataset.id
+    const amount = prompt("얼마 기부하실? (단위는 WEI ETH)");
+    if(!amount){
+      alert("기부가 취소되었습니다.")
+      return
+    }
+    const amountNum = Number(amount)
+    if(!amountNum) {
+      alert("올바른 값을 넣어주세요.")
+      return
+    }
+
+    this.setState({loading:true})
+
+    contract.methods.giveTip(postId)
+    .send({from: accounts[0], value: amountNum})
+    .on('finish', (hash) => {
+      //요게 왜 동작하지 않을까?
+      this.setState({loading:false});
+    }).catch(err => {
+      if(err.code === 4001){
+        this.setState({loading:false});
+      }
+      alert(err.message)
+    });
+  }
 
   render() {
-    if (!this.state.web3) {
+    const {web3,posts, loading} = this.state;
+    if (!web3) {
       return <div>Loading Web3, accounts, and contract...</div>;
+    } else if(loading){
+      return <div>loading... waiting for the contract end</div>
     }
     return (
       <div className="App">
-        <h1>Good to Go!</h1>
-        <p>Your Truffle Box is installed and ready.</p>
-        <h2>Smart Contract Example</h2>
-        <p>
-          If your contracts compiled and migrated successfully, below will show
-          a stored value of 5 (by default).
-        </p>
-        <p>
-          Try changing the value stored on <strong>line 42</strong> of App.js.
-        </p>
-        <div>The stored value is: {this.state.storageValue}</div>
+        <h1>유섭아 가즈앗</h1>
+        <form onSubmit={this.onSubmitPost}>
+          <input 
+            type="text" 
+            name="title"
+            placeholder="title"/>
+          <input 
+            type="text" 
+            name="description"
+            placeholder="description"/>
+          <input type="submit"/>
+        </form>
+        {posts.map((post) => {
+          const {
+            description,
+            id,
+            owner,
+            tipAmount,
+            title
+          } = post;
+          return (
+            <div key={id}>
+              <h3>title: {title}</h3>
+              <h6>description: {description}</h6>
+              <h6>author: {owner}</h6>
+              <h6>tipAmount: {tipAmount}</h6>
+              <div 
+                onClick={this.onClickGiveTip}
+                data-id={id}
+              >기부 버튼!!</div>
+            </div>
+          )
+        })}
       </div>
     );
   }
