@@ -15,15 +15,17 @@ contract TipManager is Blog {
         address tipContract
     );
     // TODO :  함수에 payable 넣는 버전과 parameter로 tip을 받는 버전 비교
-    function giveTip(uint _postId, address payable _to) public payable{
+    function giveTip(uint _postId) public payable{
         Post storage post = postList[_postId];
         post.tipAmount = post.tipAmount + msg.value;
+
         Author storage author = authorList[post.owner];
         address payable receiver = payable(author.id);
-        _to.transfer(msg.value);
+
+        receiver.transfer(msg.value);
+
         author.totalTip = author.totalTip + msg.value;
-        authorList[post.owner] = author;
-        postList[_postId] = post;
+        
         emit TipGranted(msg.value, post.title, post.owner, receiver, msg.sender, post.tipAmount, address(this));
     }   
 }
