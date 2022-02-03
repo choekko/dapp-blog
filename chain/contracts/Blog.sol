@@ -12,6 +12,14 @@ contract Blog {
     uint tipAmount;
   }
 
+  event PostCreated(
+    uint id,
+    address owner,
+    string title,
+    string description,
+    uint tipAmount
+  );
+
   struct Author {
     address id;
     string nickName;
@@ -40,9 +48,10 @@ contract Blog {
     return postList[_postId];
   }
   //게시글 쓰기 함수
-  function writePost (string _title, string _description) public {
+  function writePost (string memory _title, string memory _description) public {
     require(bytes(_title).length >0 && bytes(_description).length > 0 );
     totalPostCount ++;
     postList[totalPostCount] = Post(totalPostCount, msg.sender, _title, _description, 0);
+    emit PostCreated(totalPostCount, msg.sender, _title, _description, 0);
   }
 }
