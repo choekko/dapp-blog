@@ -7,21 +7,23 @@ contract TipManager is Blog {
     // 글의 작가의 팁 개수도 늘린다.
     event TipGranted(
         uint tip,
-        uint postid,
-        address owner,
+        string title,
+        address sender,
         address payable receiver,
-        uint balance,
-        uint tipAmount
+        address getter,
+        uint tipAmount,
+        address tipContract
     );
     // TODO :  함수에 payable 넣는 버전과 parameter로 tip을 받는 버전 비교
-    function giveTip(uint _postId) public payable{
+    function giveTip(uint _postId, address payable _to) public payable{
         Post storage post = postList[_postId];
         post.tipAmount = post.tipAmount + msg.value;
         Author storage author = authorList[post.owner];
-        address payable receiver = payable(post.owner);
-        receiver.transfer(msg.value);
+        address payable receiver = payable(author.id);
+        _to.transfer(msg.value);
         author.totalTip = author.totalTip + msg.value;
         authorList[post.owner] = author;
-        emit TipGranted(msg.value, _postId, post.owner, receiver, address(this).balance, post.tipAmount);
+        postList[_postId] = post;
+        emit TipGranted(msg.value, post.title, post.owner, receiver, msg.sender, post.tipAmount, address(this));
     }   
 }
