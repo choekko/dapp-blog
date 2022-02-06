@@ -21,7 +21,7 @@ contract TipManager is Blog {
 
         address payable receiver = post.owner;
 
-//돈이 이상한데로 전송된다...
+        //돈이 이상한데로 전송된다...
         receiver.transfer(msg.value);
 
         Author storage author = authorList[post.owner];

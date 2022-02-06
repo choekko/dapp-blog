@@ -61,54 +61,62 @@ class App extends Component {
     this.setState({totalPostCount, posts});
   }
 
-  writePost = async (title,description) => {
-    const { accounts, contract,posts } = this.state;
+  contractManager = {
+    writePost: async(title, description) => {
+      const writePostContractFunc = async() => {
+        const { accounts, contract,posts } = this.state;
+        const result = await contract.methods.writePost(
+          title,
+          description
+        ).send({from:accounts[0]});
+        const postCreated = result.events.PostCreated.returnValues;
+        this.setState({posts:[postCreated,...posts]});
+      }
+      await this.sendContract(writePostContractFunc);
+    },
+    giveTip: async(postId) => {
+      const giveTipContractFunc = async () => {
+        const { accounts, contract } = this.state;
+        const amount = prompt("얼마 기부하실? (단위는 WEI ETH)");
+        if(!amount){
+          alert("기부가 취소되었습니다.")
+          return
+        }
+        const amountNum = Number(amount)
+        if(!amountNum) {
+          alert("올바른 값을 넣어주세요.")
+          return
+        }
+        await contract.methods.giveTip(postId)
+        .send({from: accounts[0], value: amountNum})
+      }
+      await this.sendContract(giveTipContractFunc);
+    }
+  }
+
+  sendContract = async (contractFunc) => {
     this.setState({loading:true})
-    const result = await contract.methods.writePost(
-      title,
-      description
-    ).send({from:accounts[0]});
-
-    const postCreated = result.events.PostCreated.returnValues;
-    console.log(postCreated);
-
-    this.setState({loading:false, posts:[postCreated,...posts]});
+    try{
+      const result = await contractFunc();
+      this.setState({loading:false});
+    } catch(err){
+      if(err.code === 4001){
+        this.setState({loading:false});
+      }
+      alert(err.message)
+    }
   }
 
   onSubmitPost = async (e) => {
     e.preventDefault();
     const {title, description} = e.target;
-    this.writePost(title.value,description.value);
+    await this.contractManager.writePost(title.value,description.value);
   }
 
   onClickGiveTip = async(e) => {
-    const { accounts, contract,posts } = this.state;
     e.preventDefault();
     const postId = e.target.dataset.id
-    const amount = prompt("얼마 기부하실? (단위는 WEI ETH)");
-    if(!amount){
-      alert("기부가 취소되었습니다.")
-      return
-    }
-    const amountNum = Number(amount)
-    if(!amountNum) {
-      alert("올바른 값을 넣어주세요.")
-      return
-    }
-
-    this.setState({loading:true})
-
-    contract.methods.giveTip(postId)
-    .send({from: accounts[0], value: amountNum})
-    .on('finish', (hash) => {
-      //요게 왜 동작하지 않을까?
-      this.setState({loading:false});
-    }).catch(err => {
-      if(err.code === 4001){
-        this.setState({loading:false});
-      }
-      alert(err.message)
-    });
+    await this.contractManager.giveTip(postId);
   }
 
   render() {
